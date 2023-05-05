@@ -366,13 +366,13 @@ class Captcha
             $bag = "{$x} " . ['+', '-', '*'][$symbol] . " {$y} = ";
             $operations = [
                 function ($x, $y) {
-                    return $x + $y;
+                    return $x ? $x + $y : $y;
                 },
                 function ($x, $y) {
-                    return $x - $y;
+                    return $x ? $x - $y : $y;
                 },
                 function ($x, $y) {
-                    return $x * $y;
+                    return $x ? $x * $y : $y;
                 }
             ];
             $key = array_reduce([$x, $y], $operations[$symbol]);
