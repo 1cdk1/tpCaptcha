@@ -360,11 +360,22 @@ class Captcha
             $this->useZh = false;
             $this->length = 5;
 
-            $x = random_int(10, 99);
+            $x = random_int(10, 50);
             $y = random_int(1, 9);
-            $symbol = random_int(0, 1);
-            $bag = "{$x} " . ['+', '-'][$symbol] . " {$y} = ";
-            $key = $symbol ? $x - $y : $x + $y;
+            $symbol = random_int(0, 2);
+            $bag = "{$x} " . ['+', '-', '*'][$symbol] . " {$y} = ";
+            $operations = [
+                function ($x, $y) {
+                    return $x + $y;
+                },
+                function ($x, $y) {
+                    return $x - $y;
+                },
+                function ($x, $y) {
+                    return $x * $y;
+                }
+            ];
+            $key = array_reduce([$x, $y], $operations[$symbol]);
             $key .= '';
         } else {
             if ($this->useZh) {
