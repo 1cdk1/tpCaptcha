@@ -22,11 +22,6 @@ class Captcha
     private $color = null; // 验证码字体颜色
 
     /**
-     * @var Config|null
-     */
-    private $config = null;
-
-    /**
      * @var Cache|null
      */
     private $cache = null;
@@ -34,7 +29,9 @@ class Captcha
     // 验证码字符集合
     protected $codeSet = '2345678abcdefhijkmnpqrstuvwxyzABCDEFGHJKLMNPQRTUVWXY';
     // 验证码过期时间（s）
-    protected $expire = 1800;
+    protected $expire = 60 * 10;
+    //图片质量
+    protected $quality = 90;
     // 使用中文验证码
     protected $useZh = false;
     // 中文验证码字符串
@@ -52,47 +49,195 @@ class Captcha
     // 验证码图片宽度
     protected $imageW = 0;
     // 验证码位数
-    protected $length = 5;
+    protected $length = 4;
     // 验证码字体，不设置随机获取
     protected $fontttf = '';
     // 背景颜色
     protected $bg = [243, 251, 254];
     //算术验证码
     protected $math = false;
+    //验证码
+    protected $code = null;
 
     /**
      * 架构方法 设置参数
      *
      * @access public
      *
-     * @param Config       $config
      * @param \think\Cache $cache
      */
-    public function __construct(Config $config, Cache $cache)
+    public function __construct($cache)
     {
-        $this->config = $config;
         $this->cache = $cache;
     }
 
-    /**
-     * 配置验证码
-     *
-     * @param string|null $config
-     */
-    protected function configure(string $config = null): void
+    public function __destruct()
     {
-        if (is_null($config)) {
-            $config = $this->config->get('captcha', []);
-        } else {
-            $config = $this->config->get('captcha.' . $config, []);
-        }
-
-        foreach ($config as $key => $val) {
-            if (property_exists($this, $key)) {
-                $this->{$key} = $val;
-            }
+        if (!empty($this->im)) {
+            imagedestroy($this->im);
         }
     }
+
+    /**
+     * 验证码字符集合
+     *
+     * @param string $codeSet
+     */
+    public function setCodeSet(string $codeSet): void
+    {
+        $this->codeSet = $codeSet;
+    }
+
+    /**
+     * 验证码过期时间
+     *
+     * @param int $expire
+     */
+    public function setExpire(int $expire): void
+    {
+        $this->expire = $expire;
+    }
+
+    /**
+     * 使用中文验证码
+     *
+     * @param bool $useZh
+     */
+    public function setUseZh(bool $useZh): void
+    {
+        $this->useZh = $useZh;
+    }
+
+    /**
+     * 中文验证码字符串
+     *
+     * @param string $zhSet
+     */
+    public function setZhSet(string $zhSet): void
+    {
+        $this->zhSet = $zhSet;
+    }
+
+    /**
+     * 使用背景图片
+     *
+     * @param bool $useImgBg
+     */
+    public function setUseImgBg(bool $useImgBg): void
+    {
+        $this->useImgBg = $useImgBg;
+    }
+
+    /**
+     * 验证码字体大小(px)
+     *
+     * @param int $fontSize
+     */
+    public function setFontSize(int $fontSize): void
+    {
+        $this->fontSize = $fontSize;
+    }
+
+    /**
+     * 是否画混淆曲线
+     *
+     * @param bool $useCurve
+     */
+    public function setUseCurve(bool $useCurve): void
+    {
+        $this->useCurve = $useCurve;
+    }
+
+    /**
+     * 是否添加杂点
+     *
+     * @param bool $useNoise
+     */
+    public function setUseNoise(bool $useNoise): void
+    {
+        $this->useNoise = $useNoise;
+    }
+
+    /**
+     * 验证码图片高度
+     *
+     * @param int $imageH
+     */
+    public function setImageH(int $imageH): void
+    {
+        $this->imageH = $imageH;
+    }
+
+    /**
+     * 验证码图片宽度
+     *
+     * @param int $imageW
+     */
+    public function setImageW(int $imageW): void
+    {
+        $this->imageW = $imageW;
+    }
+
+    /**
+     * 验证码位数
+     *
+     * @param int $length
+     */
+    public function setLength(int $length): void
+    {
+        $this->length = $length;
+    }
+
+    /**
+     * 验证码字体，不设置随机获取
+     *
+     * @param string $fontttf
+     */
+    public function setFontttf(string $fontttf): void
+    {
+        $this->fontttf = $fontttf;
+    }
+
+    /**
+     * 背景颜色
+     *
+     * @param int[] $bg
+     */
+    public function setBg(array $bg): void
+    {
+        $this->bg = $bg;
+    }
+
+    /**
+     * 算术验证码
+     *
+     * @param bool $math
+     */
+    public function setMath(bool $math): void
+    {
+        $this->math = $math;
+    }
+
+    /**
+     * 验证码字体颜色
+     *
+     * @param null $color
+     */
+    public function setColor($color): void
+    {
+        $this->color = $color;
+    }
+
+    /**
+     * 图片质量
+     *
+     * @param int $quality
+     */
+    public function setQuality(int $quality): void
+    {
+        $this->quality = $quality;
+    }
+
 
     /**
      * 画一条由两条连在一起构成的随机正弦函数曲线作干扰线(你可以改成更帅的曲线函数)
@@ -215,10 +360,11 @@ class Captcha
             $this->useZh = false;
             $this->length = 5;
 
-            $x = random_int(10, 30);
+            $x = random_int(10, 99);
             $y = random_int(1, 9);
-            $bag = "{$x} + {$y} = ";
-            $key = $x + $y;
+            $symbol = random_int(0, 1);
+            $bag = "{$x} " . ['+', '-'][$symbol] . " {$y} = ";
+            $key = $symbol ? $x - $y : $x + $y;
             $key .= '';
         } else {
             if ($this->useZh) {
@@ -233,10 +379,11 @@ class Captcha
 
             $key = mb_strtolower($bag, 'UTF-8');
         }
+        $this->code = $key;
 
         $hash = password_hash($key, PASSWORD_BCRYPT, ['cost' => 10]);
 
-        $this->cache->set($cacheKey, $hash, 10 * 60);
+        $this->cache->set($cacheKey, $hash, $this->expire);
 
         return [
             'value' => $bag,
@@ -244,12 +391,14 @@ class Captcha
         ];
     }
 
-    public function __set($name, $value)
+    /**
+     * 获取验证码结果
+     *
+     * @return null|string
+     */
+    public function getCode()
     {
-        // TODO: Implement __set() method.
-        if (isset($this->$name)) {
-            $this->$name = $value;
-        }
+        return $this->code;
     }
 
     /**
@@ -265,38 +414,33 @@ class Captcha
     {
         $cacheKey = 'TP_CAPTCHA' . ($id ? '_' . $id : '');
 
-        if (!$this->cache->has($cacheKey)) {
+        $key = $this->cache->get($cacheKey);
+
+        if (!$key) {
             return false;
         }
-
-        $key = $this->cache->get($cacheKey);
 
         $code = mb_strtolower($code, 'UTF-8');
 
         $res = password_verify($code, $key);
 
         if ($res) {
-            $this->cache->delete($cacheKey);
+            $this->cache->set($cacheKey, null, 1);
         }
 
-        return $res;
+        return (bool)$res;
     }
 
     /**
-     * 输出验证码并把验证码的值保存的缓存中
+     * 创建验证码图片并把验证码的值保存的缓存中
      *
      * @access public
      *
-     * @param null|string $config
-     * @param bool        $api
      *
-     * @return Response
      */
-    public function create(string $config = null, bool $api = false): Response
+    public function create($id = '')
     {
-        $this->configure($config);
-
-        $generator = $this->generate();
+        $generator = $this->generate($id);
 
         // 图片宽(px)
         $this->imageW || $this->imageW = $this->length * $this->fontSize * 1.5 + $this->length * $this->fontSize / 2;
@@ -351,17 +495,66 @@ class Captcha
 
             $x = $this->fontSize * ($index + 1) * ($this->math ? 1 : 1.5);
             $y = $this->fontSize + mt_rand(10, 20);
-            $angle = $this->math ? 0 : mt_rand(-40, 40);
+            $angle = $this->math ? 0 : mt_rand(-20, 20);
 
             imagettftext($this->im, (int)$this->fontSize, $angle, (int)$x, (int)$y, $this->color, $fontttf, $char);
         }
 
-        ob_start();
-        // 输出图像
-        imagepng($this->im);
-        $content = ob_get_clean();
-        imagedestroy($this->im);
+    }
 
+    /**
+     * 保存图片
+     *
+     * @param $filename
+     *
+     * @return void
+     */
+    public function save($filename)
+    {
+        imagejpeg($this->im, $filename, $this->quality);
+    }
+
+    /**
+     * 获取gd对象
+     *
+     * @return null
+     */
+    public function getGd()
+    {
+        return $this->im;
+    }
+
+    /**
+     * 直接返回输出图片
+     *
+     * @return \think\Response
+     */
+    public function get()
+    {
+        ob_start();
+        $this->output($this->quality);
+        $content = ob_get_clean();
         return response($content, 200, ['Content-Length' => strlen($content)])->contentType('image/png');
     }
+
+    /**
+     * base64图片内容
+     *
+     * @return string
+     */
+    public function inline()
+    {
+        return 'data:image/jpeg;base64,' . base64_encode($this->get($this->quality));
+    }
+
+    /**
+     * 生成图片
+     *
+     * @return void
+     */
+    public function output()
+    {
+        imagejpeg($this->im, null, $this->quality);
+    }
+
 }
