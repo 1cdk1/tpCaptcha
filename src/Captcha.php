@@ -524,16 +524,15 @@ class Captcha
     }
 
     /**
-     * 直接返回输出图片
+     * 生成图片
      *
      * @return \think\Response
      */
     public function get()
     {
         ob_start();
-        $this->output($this->quality);
-        $content = ob_get_clean();
-        return response($content, 200, ['Content-Length' => strlen($content)])->contentType('image/png');
+        imagejpeg($this->im, null, $this->quality);
+        return ob_get_clean();
     }
 
     /**
@@ -543,17 +542,18 @@ class Captcha
      */
     public function inline()
     {
-        return 'data:image/jpeg;base64,' . base64_encode($this->get($this->quality));
+        return 'data:image/jpeg;base64,' . base64_encode($this->get());
     }
 
     /**
-     * 生成图片
+     * 直接返回输出图片
      *
      * @return void
      */
     public function output()
     {
-        imagejpeg($this->im, null, $this->quality);
+        $content = $this->get();
+        return response($content, 200, ['Content-Length' => strlen($content)])->contentType('image/png');
     }
 
 }
