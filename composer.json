@@ -1,0 +1,20 @@
+{
+  "name": "tpcaptcha/captcha",
+  "type": "library",
+  "license": "MIT",
+  "require": {
+    "topthink/framework": "^6.0|^8.0"
+  },
+  "autoload": {
+    "psr-4": {
+      "TpCaptcha\\": "src/"
+    }
+  },
+  "authors": [
+    {
+      "name": "cdk123",
+      "email": "652769507@qq.com"
+    }
+  ],
+  "minimum-stability": "dev"
+}
