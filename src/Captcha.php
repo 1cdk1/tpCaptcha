@@ -381,13 +381,12 @@ class Captcha
         }
         $this->code = $key;
 
-        $hash = password_hash($key, PASSWORD_BCRYPT, ['cost' => 10]);
 
-        $this->cache->set($cacheKey, $hash, $this->expire);
+        $this->cache->set($cacheKey, $this->code, $this->expire);
 
         return [
             'value' => $bag,
-            'key'   => $hash,
+            'key'   => $this->code,
         ];
     }
 
@@ -422,13 +421,13 @@ class Captcha
 
         $code = mb_strtolower($code, 'UTF-8');
 
-        $res = password_verify($code, $key);
+        $res = ($code == $key);
 
         if ($res) {
             $this->cache->set($cacheKey, null, 1);
         }
 
-        return (bool)$res;
+        return $res;
     }
 
     /**
